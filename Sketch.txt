@@ -1,1 +1,73 @@
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
+// Sensor Pins
+const int pHSensorPin = A0;
+const int turbiditySensorPin = A1;
+const int trigPin = 2;
+const int echoPin = 3;
+#define ONE_WIRE_BUS A2
+
+// DS18B20 setup
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  sensors.begin(); // Initialize temperature sensor
+}
+
+void loop() {
+  // Read temperature
+  sensors.requestTemperatures();
+  float temperatureC = sensors.getTempCByIndex(0);
+  Serial.print("Temperature: ");
+  Serial.print(temperatureC);
+  Serial.println(" °C");
+
+  // Read pH
+  int sensorValue_pH = analogRead(pHSensorPin);
+  float voltage_pH = sensorValue_pH * (5.0 / 1023.0);
+
+  // Read turbidity
+  int sensorValue_turbidity = analogRead(turbiditySensorPin);
+
+  // Measure water level with ultrasonic sensor
+  long duration;
+  float distance;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = (duration / 2.0) / 29.1;
+
+  // Analyze water quality
+  if (sensorValue_turbidity > 500 || voltage_pH < 1.8 || voltage_pH > 3.0) {
+    Serial.println("Water condition: Not clean");
+    if (voltage_pH < 1.8) {
+      Serial.println("Water pH is acidic");
+    } else if (voltage_pH > 3.0) {
+      Serial.println("Water pH is alkaline");
+    } else {
+      Serial.println("Water pH is neutral");
+    }
+  } else {
+    Serial.println("Water is clean");
+  }
+
+  // Water level check
+  if (distance >= 30) {
+    Serial.println("Water level: Full");
+  } else if (distance > 10) {
+    Serial.println("Water level: Normal");
+  } else {
+    Serial.println("Water level: Too low");
+  }
+
+  Serial.println("----------------------------");
+  delay(1000);
+}
